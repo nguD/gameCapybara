@@ -1,0 +1,67 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+    background-color: #90EE90;
+}
+
+#gameCanvas {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.stats {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 10px;
+    border-radius: 5px;
+    z-index: 1000;
+}
+
+.game-container {
+    position: relative;
+}
+
+.capybara-zone {
+    border: 2px solid #ddd;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.social-zone {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+#chat-container {
+    height: 300px;
+    border: 1px solid #ccc;
+}
+
+#chat-messages {
+    height: 250px;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+#chat-input {
+    width: 100%;
+    padding: 5px;
+}
+
+#stats {
+    margin: 20px 0;
+} 
