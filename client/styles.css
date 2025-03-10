@@ -64,4 +64,53 @@ body {
 
 #stats {
     margin: 20px 0;
+}
+
+.dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.dialog-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.dialog-content h2 {
+    color: #333;
+    margin-bottom: 20px;
+}
+
+#pseudoInput {
+    padding: 10px;
+    font-size: 16px;
+    width: 200px;
+    margin-bottom: 15px;
+    border: 2px solid #90EE90;
+    border-radius: 5px;
+}
+
+#startButton {
+    padding: 10px 20px;
+    font-size: 16px;
+    background-color: #90EE90;
+    border: none;
+    border-radius: 5px;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#startButton:hover {
+    background-color: #78c278;
 } 

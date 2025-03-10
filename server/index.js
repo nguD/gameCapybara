@@ -22,6 +22,7 @@ io.on('connection', (socket) => {
     console.log('Un joueur s\'est connecté');
 
     socket.on('playerJoin', (playerData) => {
+        playerData.id = socket.id;
         connectedPlayers.set(socket.id, playerData);
         io.emit('playerUpdate', Object.fromEntries(connectedPlayers));
     });

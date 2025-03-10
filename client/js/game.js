@@ -1,10 +1,44 @@
 class Game {
     constructor() {
         console.log('Initialisation du jeu');
-        this.canvas = document.getElementById('gameCanvas');
-        console.log('Canvas trouvé:', this.canvas);
+        this.setupPseudoDialog();
+    }
+
+    setupPseudoDialog() {
+        const dialog = document.getElementById('pseudoDialog');
+        const input = document.getElementById('pseudoInput');
+        const startButton = document.getElementById('startButton');
+
+        startButton.addEventListener('click', () => {
+            const pseudo = input.value.trim();
+            if (pseudo) {
+                dialog.style.display = 'none';
+                this.initGame(pseudo);
+            } else {
+                alert('Veuillez entrer un pseudo!');
+            }
+        });
+
+        // Permettre l'utilisation de la touche Entrée
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                startButton.click();
+            }
+        });
+    }
+
+    initGame(pseudo) {
+        // Supprimer l'ancien canvas s'il existe
+        const oldCanvas = document.getElementById('gameCanvas');
+        if (oldCanvas) {
+            oldCanvas.remove();
+        }
+
+        // Créer un nouveau canvas
+        this.canvas = document.createElement('canvas');
+        this.canvas.id = 'gameCanvas';
+        document.body.appendChild(this.canvas);
         this.ctx = this.canvas.getContext('2d');
-        console.log('Contexte 2D obtenu');
         
         // Adapter la taille du canvas à la fenêtre
         this.canvas.width = window.innerWidth;
@@ -25,28 +59,30 @@ class Game {
             isOnFire: false,
             wasOnFire: false,
             baseSpeed: 5,
+            speed: 5,
             speedBoostEnd: 0,
-            isSpeedBoosted: false
+            isSpeedBoosted: false,
+            pseudo: pseudo
         };
 
-        // Configuration de l'anaconda
+        // Configuration de l'anaconda avec une queue plus longue
         this.anaconda = {
             x: 100,
             y: 100,
             width: 60,
             height: 30,
-            speed: 3,
+            speed: 1.5,
             direction: 'right',
             segments: [],
-            tailLength: 15,
+            tailLength: 25,
             history: [],
-            maxHistory: 20,
+            maxHistory: 30,
             targetPos: null,
             lastUpdate: Date.now(),
             updateInterval: 500
         };
 
-        // Initialiser les segments de l'anaconda
+        // Initialiser les segments de l'anaconda avec une longueur plus importante
         for (let i = 0; i < this.anaconda.tailLength; i++) {
             this.anaconda.segments.push({
                 x: this.anaconda.x - (i * 20),
@@ -117,7 +153,7 @@ class Game {
 
         // Configuration des fruits
         this.fruitsConfig = {
-            salade: { pv: 5, color: '#90EE90', radius: 8, weight: 2 },
+            salade: { pv: 5, color: '#1B4D21', radius: 8, weight: 2 },
             tomate: { pv: 3, color: '#FF6347', radius: 6, weight: 3 },
             pomme: { pv: 2, color: '#FF0800', radius: 5, weight: 4 },
             mangue: { pv: 10, color: '#FFD700', radius: 10, weight: 1 },
@@ -137,33 +173,42 @@ class Game {
         this.fireParticles = [];
 
         // Charger l'image du capybara
-        this.capybaraImage = new Image();
-        this.capybaraImage.src = 'assets/images/capybara.png';
+        // this.capybaraImage = new Image();
+        // this.capybaraImage.src = 'assets/images/capybara.png';
         
         // Ajouter des logs pour débugger
-        this.capybaraImage.onload = () => {
-            console.log('Image chargée avec succès');
-            this.imageLoaded = true;
-        };
+        // this.capybaraImage.onload = () => {
+        //     console.log('Image chargée avec succès');
+        //     this.imageLoaded = true;
+        // };
 
-        this.capybaraImage.onerror = () => {
-            console.error('Erreur de chargement de l\'image');
-            // Revenir au dessin par défaut si l'image ne charge pas
-            this.imageLoaded = false;
-        };
+        // this.capybaraImage.onerror = () => {
+        //     console.error('Erreur de chargement de l\'image');
+        //     // Revenir au dessin par défaut si l'image ne charge pas
+        //     this.imageLoaded = false;
+        // };
+
+        this.walls = [
+            // Nouveau mur horizontal au tiers supérieur de la map
+            {
+                x: this.canvas.width * 0.2,  // Commence à 20% de la largeur
+                y: this.canvas.height * 0.3, // À 30% de la hauteur
+                width: 200,
+                height: 20,
+                color: '#808080' // Gris
+            },
+            
+            // Nouveau mur vertical aux deux-tiers de la map
+            {
+                x: this.canvas.width * 0.7,  // À 70% de la largeur
+                y: this.canvas.height * 0.4, // Commence à 40% de la hauteur
+                width: 20,
+                height: 180,
+                color: '#808080' // Gris
+            }
+        ];
 
         this.gameLoop();
-
-        // Gestion du redimensionnement
-        window.addEventListener('resize', () => {
-            this.canvas.width = window.innerWidth;
-            this.canvas.height = window.innerHeight;
-        });
-
-        // Augmenter la pénalité de dégâts sur les plaques de feu
-        this.fireDamageRate = 0.1; // Dégâts par frame sur le feu (5 fois plus rapide)
-
-        this.gameOver = false; // Ajouter l'état de game over
     }
 
     initSounds() {
@@ -190,7 +235,8 @@ class Game {
         this.socket.emit('playerJoin', {
             x: this.capybara.x,
             y: this.capybara.y,
-            direction: this.capybara.direction
+            direction: this.capybara.direction,
+            pseudo: this.capybara.pseudo
         });
 
         this.socket.on('playerUpdate', (players) => {
@@ -376,7 +422,7 @@ class Game {
         }
     }
 
-    drawCapybara(x, y, direction, isMainPlayer = false, isEating = false) {
+    drawCapybara(x, y, direction, isMainPlayer = false, isEating = false, pseudo = '') {
         const breathingOffset = Math.sin(this.capybara.frameCount * 0.1) * 2;
         
         // Corps principal
@@ -523,11 +569,22 @@ class Game {
             const pvText = `${Math.floor(this.capybara.hunger)}/100 PV`;
             this.ctx.strokeText(pvText, x + this.capybara.width + 5, y - 10);
             this.ctx.fillText(pvText, x + this.capybara.width + 5, y - 10);
+
+            // Ajouter le pseudo au-dessus du capybara
+            this.ctx.fillStyle = 'white';
+            this.ctx.font = '14px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.strokeStyle = 'black';
+            this.ctx.lineWidth = 3;
+            
+            const pseudoToShow = isMainPlayer ? this.capybara.pseudo : pseudo;
+            this.ctx.strokeText(pseudoToShow, x + this.capybara.width/2, y - 30);
+            this.ctx.fillText(pseudoToShow, x + this.capybara.width/2, y - 30);
         }
 
-        // Ajouter un effet visuel pour le boost de vitesse
+        // Effet visuel pour le boost de vitesse
         if (this.capybara.isSpeedBoosted && isMainPlayer) {
-            // Aura rose autour du capybara
+            // Aura rose plus intense
             const gradient = this.ctx.createRadialGradient(
                 x + this.capybara.width/2,
                 y + this.capybara.height/2,
@@ -585,9 +642,16 @@ class Game {
             this.ctx.fillRect(zone.x, zone.y, zone.width, zone.height);
         }
 
-        // Dessiner les autres joueurs
+        // Dessiner les autres joueurs avec leurs pseudos
         for (let [id, player] of this.otherPlayers) {
-            this.drawCapybara(player.x, player.y, player.direction, false);
+            this.drawCapybara(
+                player.x,
+                player.y,
+                player.direction,
+                false,
+                false,
+                player.pseudo // Passer le pseudo du joueur
+            );
         }
 
         // Dessiner le capybara principal
@@ -596,33 +660,119 @@ class Game {
             this.capybara.y,
             this.capybara.direction,
             true,
-            this.capybara.isEating
+            this.capybara.isEating,
+            this.capybara.pseudo
         );
 
         // Dessiner les fruits
         for (let fruit of this.fruits) {
+            // Ajuster la taille pour les pommes
+            let fruitRadius = fruit.type === 'pomme' ? fruit.radius * 2 : fruit.radius;
+
             // Ombre du fruit
             this.ctx.beginPath();
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-            this.ctx.ellipse(fruit.x, fruit.y + fruit.radius/2, fruit.radius, fruit.radius/3, 0, 0, Math.PI * 2);
+            
+            if (fruit.type === 'mangue') {
+                // Ombre ovale pour la mangue
+                this.ctx.ellipse(
+                    fruit.x, 
+                    fruit.y + fruitRadius/2, 
+                    fruitRadius * 1.3, // Plus large
+                    fruitRadius * 0.8, // Plus court
+                    Math.PI / 4, // Rotation de 45 degrés
+                    0, 
+                    Math.PI * 2
+                );
+            } else {
+                // Ombre ronde pour les autres fruits
+                this.ctx.ellipse(
+                    fruit.x, 
+                    fruit.y + fruitRadius/2, 
+                    fruitRadius, 
+                    fruitRadius/3, 
+                    0, 
+                    0, 
+                    Math.PI * 2
+                );
+            }
             this.ctx.fill();
 
             // Fruit
             this.ctx.beginPath();
             this.ctx.fillStyle = fruit.color;
-            this.ctx.arc(fruit.x, fruit.y, fruit.radius, 0, Math.PI * 2);
+            
+            if (fruit.type === 'mangue') {
+                // Forme ovale pour la mangue
+                this.ctx.ellipse(
+                    fruit.x, 
+                    fruit.y, 
+                    fruitRadius * 1.3, // Plus large
+                    fruitRadius * 0.8, // Plus court
+                    Math.PI / 4, // Rotation de 45 degrés
+                    0, 
+                    Math.PI * 2
+                );
+            } else {
+                // Forme ronde pour les autres fruits
+                this.ctx.arc(
+                    fruit.x, 
+                    fruit.y, 
+                    fruitRadius, 
+                    0, 
+                    Math.PI * 2
+                );
+            }
             this.ctx.fill();
 
-            // Petit reflet sur le fruit
+            // Reflet sur le fruit
             this.ctx.beginPath();
             this.ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-            this.ctx.arc(
-                fruit.x - fruit.radius/3,
-                fruit.y - fruit.radius/3,
-                fruit.radius/4,
-                0, Math.PI * 2
-            );
+            if (fruit.type === 'mangue') {
+                // Reflet ovale pour la mangue
+                this.ctx.ellipse(
+                    fruit.x - fruitRadius/3,
+                    fruit.y - fruitRadius/3,
+                    fruitRadius/3,
+                    fruitRadius/5,
+                    Math.PI / 4,
+                    0,
+                    Math.PI * 2
+                );
+            } else {
+                // Reflet rond pour les autres fruits
+                this.ctx.arc(
+                    fruit.x - fruitRadius/3,
+                    fruit.y - fruitRadius/3,
+                    fruitRadius/4,
+                    0,
+                    Math.PI * 2
+                );
+            }
             this.ctx.fill();
+
+            // Ajouter la feuille verte pour les pommes
+            if (fruit.type === 'pomme') {
+                this.ctx.beginPath();
+                this.ctx.fillStyle = '#2D5A27'; // Vert foncé pour la feuille
+                this.ctx.arc(
+                    fruit.x, 
+                    fruit.y - fruitRadius - 2, // Ajusté la position verticale
+                    2.7, // Réduit de 8 à environ 2.7 (divisé par 3)
+                    0, 
+                    Math.PI * 2
+                );
+                this.ctx.fill();
+            }
+
+            // Ajouter l'éclair pour le fruit boost
+            if (fruit.isBoost) {
+                this.ctx.fillStyle = 'white';
+                this.ctx.font = '16px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText('⚡', fruit.x, fruit.y);
+            }
         }
 
         // Dessiner les plaques de feu
@@ -709,9 +859,9 @@ class Game {
         this.weather.timeUntilChange = Math.random() * 300 + 300; // 5-10 minutes
 
         if (this.weather.current === 'rainy') {
-            this.sounds.rain.play();
+            // this.rainSound.play();
         } else {
-            this.sounds.rain.pause();
+            // this.rainSound.pause();
         }
     }
 
@@ -737,7 +887,7 @@ class Game {
                 this.interactionTarget = id;
                 this.score.friendsMade++;
                 this.capybara.happiness += 10;
-                this.sounds.friend.play();
+                // this.friendSound.play();
                 
                 // Émission de l'interaction
                 this.socket.emit('interaction', {
@@ -978,8 +1128,10 @@ class Game {
             isEating: false,
             frameCount: 0,
             baseSpeed: 5,
+            speed: 5,
             speedBoostEnd: 0,
-            isSpeedBoosted: false
+            isSpeedBoosted: false,
+            pseudo: ''
         };
 
         this.score = {
@@ -1100,7 +1252,7 @@ class Game {
             const green = Math.floor(139 + (34 - 139) * ratio);
             this.ctx.fillStyle = `rgb(0, ${green}, 0)`;
 
-            // Corps du segment avec effet d'ondulation
+            // Corps du segment avec effet d'ondulation plus prononcé
             const wave = Math.sin(Date.now() * 0.005 + i * 0.5) * 5;
             this.ctx.beginPath();
             this.ctx.ellipse(
@@ -1112,7 +1264,7 @@ class Game {
             );
             this.ctx.fill();
 
-            // Écailles (motif simple)
+            // Écailles (motif plus détaillé)
             if (i < this.anaconda.segments.length - 1) {
                 this.ctx.fillStyle = `rgba(0, ${green - 20}, 0, 0.5)`;
                 this.ctx.beginPath();
@@ -1151,7 +1303,7 @@ class Game {
         );
         this.ctx.fill();
 
-        // Langue
+        // Langue avec animation plus fluide
         this.ctx.strokeStyle = 'red';
         this.ctx.lineWidth = 2;
         const tongueWave = Math.sin(Date.now() * 0.01) * 5;
@@ -1235,13 +1387,13 @@ class Game {
 
     activateSpeedBoost() {
         this.capybara.isSpeedBoosted = true;
-        this.capybara.speed = this.capybara.baseSpeed * 1.7; // Augmentation de 70%
-        this.capybara.speedBoostEnd = Date.now() + 10000; // 10 secondes au lieu de 5000 (5 secondes)
+        this.capybara.speed = this.capybara.baseSpeed * 2; // Multiplier par 2 au lieu de 1.7
+        this.capybara.speedBoostEnd = Date.now() + 10000; // 10 secondes de boost
         this.createBoostEffect();
     }
 
     createBoostEffect() {
-        // Effet visuel pour le boost
+        // Effet visuel plus intense pour le doublement de vitesse
         for (let i = 0; i < 20; i++) {
             this.weather.particles.push({
                 x: this.capybara.x + this.capybara.width/2,
